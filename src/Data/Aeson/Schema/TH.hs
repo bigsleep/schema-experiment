@@ -1,43 +1,150 @@
-{-# LANGUAGE TemplateHaskell, QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell, QuasiQuotes, ViewPatterns #-}
 module Data.Aeson.Schema.TH
-( tupleInstanceOfHasSchema
+( deriveHasSchema
 ) where
 
-import Control.Monad (replicateM, liftM2)
 import Language.Haskell.TH
-import Language.Haskell.TH.Lib
-import Language.Haskell.TH.Syntax (Lift(..))
+import Language.Haskell.TH.Syntax (Lift(..), lift)
 import Data.Tagged (Tagged, retag)
+import qualified Data.Aeson.TH as DA
 import Data.Aeson.Schema.Types
+import qualified Data.Text as T (Text, pack, unpack)
+import Data.Map.Strict (fromList)
 
-tupleInstanceOfHasSchema :: Int -> DecsQ
-tupleInstanceOfHasSchema n = do
-    es <- replicateM n $ newName "e"
+deriveHasSchema :: DA.Options -> Name -> DecsQ
+deriveHasSchema options name = do
+    (tvbs, cons) <- typeInfo name
     tag <- newName "tag"
+    let tvbNames = map tvbName tvbs
+        cxts = mapM (classP ''HasSchema . (:[]) . varT) tvbNames
+        tq = foldl appT (conT name) (map varT tvbNames)
+        ty = conT ''HasSchema `appT` tq
 
-    let cxts = mapM (classP ''HasSchema . (:[]) . varT) es
-        ty = conT ''HasSchema `appT` foldl appT (tupleT n) (map varT es)
+    t <- tq
+    (expr, decs) <- genFromCons options t tvbs tag cons
+    let body = normalB (return expr)
+        decqs = [funD 'schema [clause [varP tag] body (map return decs)]]
+    fmap (:[]) $ instanceD cxts ty decqs
 
-    retags <- mapM (genRetag n) [1..n]
-    let retagNames = map fst retags
-        retagDecs = concat . map snd $ retags
-        schemas = listE $ map ((varE 'schema `appE`) . (`appE` varE tag) . varE) retagNames
-        f = genSchemaDec tag schemas retagDecs
-    fmap return $ instanceD cxts ty [f]
+genFromCons :: DA.Options -> Type -> [TyVarBndr] -> Name -> [Con] -> Q (Exp, [Dec])
+genFromCons _ _ _ _ [] = error "no construcotrs"
+genFromCons options t tvbs tag [con] =
+    genSchemaCon options t tvbs tag con >>= return . snd
+genFromCons options t tvbs tag cons
+    | useStringTag = genStringEnum . lift $ modConNames
+    | otherwise = do
+        xs <- mapM (genSchemaCon options t tvbs tag) cons
+        let ys = zip (map fst xs) (map (fst . snd) xs)
+        expr <- encodeSum options ys
+        let decs = concat . map (snd . snd) $ xs
+        return (expr, decs)
+    where
+    useStringTag = DA.allNullaryToStringTag options && all isNullary cons
+    conMod = DA.constructorTagModifier options
+    conNames = map getConName cons
+    modConNames = map (T.pack . conMod . dropNameSpace . show) conNames
+    genStringEnum cns = do
+        expr <- [|Schema . enum $ ($cns)|]
+        return (expr, [])
 
-genRetag :: Int -> Int -> Q (Name, [Dec])
-genRetag tsize i | tsize < i || i < 1 = error "bad arg"
-                          | otherwise = do
-    es <- replicateM tsize $ newName "e"
+genSchemaCon :: DA.Options -> Type -> [TyVarBndr] -> Name -> Con -> Q (Name, (Exp, [Dec]))
+
+genSchemaCon _ t tvbs tag (NormalC name [ty]) = do
+    (retagName, retagDecs) <- genRetag tvbs t . snd $ ty
+    expr <- (varE 'schema `appE`) . (`appE` varE tag) . varE $ retagName
+    return (name, (expr, retagDecs))
+
+genSchemaCon _ t tvbs tag (NormalC name types) = do
+    (retagNames, retagDecs) <- fmap unzip $ mapM (genRetag tvbs t . snd) types
+    let schemas = listE $ map ((varE 'schema `appE`) . (`appE` varE tag) . varE) retagNames
+    expr <- [|Schema . tuple $ ($schemas)|]
+    return (name, (expr, concat retagDecs))
+
+genSchemaCon options t tvbs tag (RecC name fields) = do
+    (retagNames, retagDecs) <- fmap unzip $ mapM (genRetag tvbs t . getFieldType) fields
+    let fieldNames = map (T.pack . fieldMod . dropNameSpace . show . getFieldName) fields
+        schemas = map ((varE 'schema `appE`) . (`appE` varE tag) . varE) retagNames
+        fieldsExpr = listE . map tupq $ zip (map lift fieldNames) schemas
+    expr <- [|Schema . object $ ($fieldsExpr)|]
+    return (name, (expr, concat retagDecs))
+    where
+    getFieldName (a, _, _) = a
+    getFieldType (_, _, a) = a
+    fieldMod = DA.fieldLabelModifier options
+    tupq (a, b) = tupE [a, b]
+
+genSchemaCon _ _ _ _ _ = error "error"
+
+
+genRetag :: [TyVarBndr] -> Type -> Type -> Q (Name, [Dec])
+genRetag tvbs arg ret = do
     fname <- newName "retagf"
-    let tup = foldl appT (tupleT tsize) (map varT es)
-        ret = varT $ es !! (i - 1)
-        ty = [t|Tagged ($tup) () -> Tagged ($ret) ()|]
+    let targ = return arg
+        tret = return ret
+        ty = [t|Tagged ($targ) () -> Tagged ($tret) ()|]
     dec <- funD fname [clause [] (normalB (varE 'retag)) []]
-    sig <- sigD fname $ forallT (map plainTV es) (return []) ty
+    sig <- sigD fname $ forallT tvbs (return []) ty
     return (fname, [sig, dec])
 
-genSchemaDec :: Name -> ExpQ -> [Dec] -> DecQ
-genSchemaDec tag schemas decs = do
-        expr <- [e|Schema . tuple $ ($schemas)|]
-        return $ FunD 'schema [Clause [VarP tag] (NormalB expr) decs]
+encodeSum :: DA.Options -> [(Name, Exp)] -> Q Exp
+encodeSum options @ (DA.sumEncoding -> DA.ObjectWithSingleField) infos =
+    genSchemaSum $ map makeObjectWithSingleField infos
+
+    where
+    makeObjectWithSingleField (name, expr) =
+        [|($(lift conName), Schema . object $ [($conTag, $(return expr))]) |]
+        where
+        conName = dropNameSpace . show $ name
+        conTag = lift . T.pack . DA.constructorTagModifier options $ conName
+
+encodeSum options @ (DA.sumEncoding -> DA.TwoElemArray) infos =  do
+    genSchemaSum $ map makeTwoElemArray infos
+
+    where
+    makeTwoElemArray (name, expr) =
+        [|($(lift conName), Schema . tuple $ [Schema . stringConstant $ ($conTag), $(return expr)]) |]
+        where
+        conName = dropNameSpace . show $ name
+        conTag = lift . T.pack . DA.constructorTagModifier options $ conName
+
+encodeSum options @ (DA.sumEncoding -> DA.TaggedObject tagField contentField) infos = do
+    genSchemaSum $ map makeTaggedObject infos
+
+    where
+    tagFieldq = lift . T.pack $ tagField
+    contentFieldq = lift . T.pack $ contentField
+    makeTaggedObject (name, expr) =
+        [|($(lift conName), Schema . object $ [($tagFieldq, Schema . stringConstant $ ($conTag)), ($contentFieldq, $(return expr))]) |]
+        where
+        conName = dropNameSpace . show $ name
+        conTag = lift . T.pack . DA.constructorTagModifier options $ conName
+
+genSchemaSum :: [ExpQ] ->  ExpQ
+genSchemaSum fields = [|SchemaSum . fromList $ $(listE fields)|]
+
+tvbName :: TyVarBndr -> Name
+tvbName (PlainTV  name  ) = name
+tvbName (KindedTV name _) = name
+
+getConName :: Con -> Name
+getConName (NormalC name _)  = name
+getConName (RecC name _)     = name
+getConName (InfixC _ name _) = name
+getConName (ForallC _ _ con) = getConName con
+
+typeInfo :: Name -> Q ([TyVarBndr], [Con])
+typeInfo = (f =<<) . reify
+    where
+    f (TyConI (DataD _ _ tvbs cons _)) = return (tvbs, cons)
+    f (TyConI (NewtypeD _ _ tvbs con _)) = return (tvbs, [con])
+    f _ = error $ "type name required."
+
+isNullary :: Con -> Bool
+isNullary (NormalC _ []) = True
+isNullary _ = False
+
+dropNameSpace :: String -> String
+dropNameSpace = reverse . takeWhile (/= '.') . reverse
+
+instance Lift T.Text where
+    lift t = litE (stringL (T.unpack t))

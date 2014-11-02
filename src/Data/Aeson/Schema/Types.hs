@@ -15,18 +15,20 @@ module Data.Aeson.Schema.Types
 , array
 , object
 , tuple
+, enum
+, stringConstant
 ) where
 
 import Prelude hiding (null)
 import Data.Text (Text)
-import Data.HashMap.Strict (HashMap, fromList)
+import Data.Map.Strict (Map, fromList)
 import Data.Tagged (Tagged)
 
 data Schema =
     Schema !SchemaValue |
     SchemaMaybe !Schema |
-    SchemaUnion (HashMap Text Schema)
-    deriving (Show, Eq)
+    SchemaSum (Map Text Schema)
+    deriving (Show, Eq, Ord)
 
 data SchemaValue =
     SchemaValueNull !SchemaNull |
@@ -35,7 +37,7 @@ data SchemaValue =
     SchemaValueString !SchemaString |
     SchemaValueArray !SchemaArray |
     SchemaValueObject !SchemaObject
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 
 null, bool, number, string :: SchemaValue
 null = SchemaValueNull SchemaNull
@@ -52,20 +54,30 @@ tuple = SchemaValueArray . SchemaArrayTuple
 object :: [(Text, Schema)] -> SchemaValue
 object = SchemaValueObject . SchemaObject . fromList
 
-data SchemaNull = SchemaNull deriving (Show, Eq)
+enum :: [Text] -> SchemaValue
+enum = SchemaValueString . SchemaStringEnum
 
-data SchemaBool = SchemaBool deriving (Show, Eq)
+stringConstant :: Text -> SchemaValue
+stringConstant = SchemaValueString . SchemaStringConstant
 
-data SchemaNumber = SchemaNumber deriving (Show, Eq)
+data SchemaNull = SchemaNull deriving (Show, Eq, Ord)
 
-data SchemaString = SchemaString deriving (Show, Eq)
+data SchemaBool = SchemaBool deriving (Show, Eq, Ord)
+
+data SchemaNumber = SchemaNumber deriving (Show, Eq, Ord)
+
+data SchemaString =
+    SchemaString |
+    SchemaStringConstant Text |
+    SchemaStringEnum [Text]
+    deriving (Show, Eq, Ord)
 
 data SchemaArray =
     SchemaArray Schema |
     SchemaArrayTuple [Schema]
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 
-data SchemaObject = SchemaObject (HashMap Text Schema) deriving (Show, Eq)
+data SchemaObject = SchemaObject (Map Text Schema) deriving (Show, Eq, Ord)
 
 class HasSchema a where
     schema :: Tagged a () -> Schema
