@@ -8,7 +8,6 @@ import Data.Aeson.Schema.TH (deriveHasSchema)
 import Data.Aeson.TH (Options(..), SumEncoding(..), defaultOptions)
 
 import Control.Monad (mapM, liftM2)
-import Data.Tagged (Tagged, retag)
 import Data.Scientific (Scientific)
 import Data.Fixed (HasResolution, Fixed)
 import Data.Int (Int8, Int16, Int32, Int64)
@@ -107,8 +106,8 @@ instance HasSchema IntSet.IntSet where
 instance (HasSchema a) => HasSchema (IntMap.IntMap a) where
     schema t = Schema . array . Schema . tuple $ [Schema number, schema (etag t)]
 
-etag :: Tagged (m a) () -> Tagged a ()
-etag = retag
+etag :: Tag (m a) -> Tag a
+etag _ = tag
 
 -- generate Tuple instances
 foldr (liftM2 (++)) (return []) . map (deriveHasSchema defaultOptions . tupleTypeName) $ [0, 2..10]

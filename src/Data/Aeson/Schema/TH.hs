@@ -5,7 +5,6 @@ module Data.Aeson.Schema.TH
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (Lift(..), lift)
-import Data.Tagged (Tagged, retag)
 import qualified Data.Aeson.TH as DA
 import Data.Aeson.Schema.Types
 import qualified Data.Text as T (Text, pack, unpack)
@@ -81,46 +80,23 @@ genRetag tvbs arg ret = do
     fname <- newName "retagf"
     let targ = return arg
         tret = return ret
-        ty = [t|Tagged ($targ) () -> Tagged ($tret) ()|]
-    dec <- funD fname [clause [] (normalB (varE 'retag)) []]
+        ty = [t|Tag ($targ) -> Tag ($tret)|]
+    dec <- funD fname [clause [wildP] (normalB (varE 'tag)) []]
     sig <- sigD fname $ forallT tvbs (return []) ty
     return (fname, [sig, dec])
 
 encodeSum :: DA.Options -> [(Name, Exp)] -> Q Exp
-encodeSum options @ (DA.sumEncoding -> DA.ObjectWithSingleField) infos =
-    genSchemaSum $ map makeObjectWithSingleField infos
-
+encodeSum options infos =
+    genSchemaSum sumQ . listE $ map pairQ infos
     where
-    makeObjectWithSingleField (name, expr) =
-        [|($(lift conName), Schema . object $ [($conTag, $(return expr))]) |]
+    sumQ = lift . DA.sumEncoding $ options
+    pairQ (name, expr) = [|($conTag, $(return expr))|]
         where
         conName = dropNameSpace . show $ name
         conTag = lift . T.pack . DA.constructorTagModifier options $ conName
 
-encodeSum options @ (DA.sumEncoding -> DA.TwoElemArray) infos =  do
-    genSchemaSum $ map makeTwoElemArray infos
-
-    where
-    makeTwoElemArray (name, expr) =
-        [|($(lift conName), Schema . tuple $ [Schema . stringConstant $ ($conTag), $(return expr)]) |]
-        where
-        conName = dropNameSpace . show $ name
-        conTag = lift . T.pack . DA.constructorTagModifier options $ conName
-
-encodeSum options @ (DA.sumEncoding -> DA.TaggedObject tagField contentField) infos = do
-    genSchemaSum $ map makeTaggedObject infos
-
-    where
-    tagFieldq = lift . T.pack $ tagField
-    contentFieldq = lift . T.pack $ contentField
-    makeTaggedObject (name, expr) =
-        [|($(lift conName), Schema . object $ [($tagFieldq, Schema . stringConstant $ ($conTag)), ($contentFieldq, $(return expr))]) |]
-        where
-        conName = dropNameSpace . show $ name
-        conTag = lift . T.pack . DA.constructorTagModifier options $ conName
-
-genSchemaSum :: [ExpQ] ->  ExpQ
-genSchemaSum fields = [|SchemaSum . fromList $ $(listE fields)|]
+genSchemaSum :: ExpQ -> ExpQ ->  ExpQ
+genSchemaSum sumQ fields = [|SchemaUnion ($sumQ) . fromList $ ($fields)|]
 
 tvbName :: TyVarBndr -> Name
 tvbName (PlainTV  name  ) = name
@@ -148,3 +124,8 @@ dropNameSpace = reverse . takeWhile (/= '.') . reverse
 
 instance Lift T.Text where
     lift t = litE (stringL (T.unpack t))
+
+instance Lift DA.SumEncoding where
+    lift DA.ObjectWithSingleField = [|DA.ObjectWithSingleField|]
+    lift DA.TwoElemArray = [|DA.TwoElemArray|]
+    lift (DA.TaggedObject a b) = [|(DA.TaggedObject a b)|]

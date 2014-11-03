@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric, StandaloneDeriving, KindSignatures #-}
 module Data.Aeson.Schema.Types
 ( Schema(..)
 , SchemaValue(..)
@@ -8,6 +9,8 @@ module Data.Aeson.Schema.Types
 , SchemaArray(..)
 , SchemaObject(..)
 , HasSchema(..)
+, Tag
+, Tag2
 , null
 , bool
 , number
@@ -17,18 +20,34 @@ module Data.Aeson.Schema.Types
 , tuple
 , enum
 , stringConstant
+, tag
+, tag2
 ) where
 
 import Prelude hiding (null)
+import GHC.Generics (Generic)
 import Data.Text (Text)
 import Data.Map.Strict (Map, fromList)
-import Data.Tagged (Tagged)
+import Data.Aeson.Types (SumEncoding(..))
+
+newtype Tag a = Tag ()
+tag :: Tag a
+tag = Tag ()
+
+newtype Tag2 (a :: * -> *) = Tag2 ()
+tag2 :: Tag2 a
+tag2 = Tag2 ()
+
 
 data Schema =
     Schema !SchemaValue |
     SchemaMaybe !Schema |
-    SchemaSum (Map Text Schema)
-    deriving (Show, Eq, Ord)
+    SchemaUnion SumEncoding (Map Text Schema)
+    deriving (Show, Eq, Ord, Generic)
+
+deriving instance Show SumEncoding
+deriving instance Eq SumEncoding
+deriving instance Ord SumEncoding
 
 data SchemaValue =
     SchemaValueNull !SchemaNull |
@@ -37,7 +56,7 @@ data SchemaValue =
     SchemaValueString !SchemaString |
     SchemaValueArray !SchemaArray |
     SchemaValueObject !SchemaObject
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Generic)
 
 null, bool, number, string :: SchemaValue
 null = SchemaValueNull SchemaNull
@@ -60,24 +79,25 @@ enum = SchemaValueString . SchemaStringEnum
 stringConstant :: Text -> SchemaValue
 stringConstant = SchemaValueString . SchemaStringConstant
 
-data SchemaNull = SchemaNull deriving (Show, Eq, Ord)
+data SchemaNull = SchemaNull deriving (Show, Eq, Ord, Generic)
 
-data SchemaBool = SchemaBool deriving (Show, Eq, Ord)
+data SchemaBool = SchemaBool deriving (Show, Eq, Ord, Generic)
 
-data SchemaNumber = SchemaNumber deriving (Show, Eq, Ord)
+data SchemaNumber = SchemaNumber deriving (Show, Eq, Ord, Generic)
 
 data SchemaString =
     SchemaString |
     SchemaStringConstant Text |
     SchemaStringEnum [Text]
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Generic)
 
 data SchemaArray =
     SchemaArray Schema |
     SchemaArrayTuple [Schema]
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Generic)
 
-data SchemaObject = SchemaObject (Map Text Schema) deriving (Show, Eq, Ord)
+data SchemaObject = SchemaObject (Map Text Schema) deriving (Show, Eq, Ord, Generic)
 
 class HasSchema a where
-    schema :: Tagged a () -> Schema
+    schema :: Tag a -> Schema
+
