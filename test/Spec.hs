@@ -7,6 +7,7 @@ import qualified Test.QuickCheck.Property as Q
 
 import Data.Aeson.TH (Options(..), defaultOptions, SumEncoding(..))
 import Data.Aeson.Schema.Types
+import Data.Aeson.Schema.Classes (HasSchema(..))
 import Data.Aeson.Schema.Instances
 import Data.Aeson.Schema.TH (deriveHasSchema)
 
@@ -14,6 +15,8 @@ import qualified Data.Text as T
 import Data.Tagged (Tagged(..))
 import Data.Char (toLower)
 import Data.Map.Strict (fromList)
+
+import GenericSpec (genericSpec)
 
 -- string tag
 data Data1 =
@@ -91,6 +94,8 @@ instance (HasSchema a, HasSchema (m a)) => HasSchema (Data11 m a) where
 
 main :: IO ()
 main = hspec $ do
+    genericSpec
+
     describe "deriveHasSchema" $ do
 
         it "Data1, string tag" $ do

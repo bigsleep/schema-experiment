@@ -4,6 +4,7 @@ module Data.Aeson.Schema.Instances
 ) where
 
 import Data.Aeson.Schema.Types
+import Data.Aeson.Schema.Classes (HasSchema(..))
 import Data.Aeson.Schema.TH (deriveHasSchema)
 import Data.Aeson.TH (Options(..), SumEncoding(..), defaultOptions)
 

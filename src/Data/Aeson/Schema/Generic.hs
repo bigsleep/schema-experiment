@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances,
+{-# LANGUAGE FlexibleInstances, EmptyDataDecls,
     FunctionalDependencies, KindSignatures, OverlappingInstances,
     ScopedTypeVariables, TypeOperators, UndecidableInstances,
     FlexibleContexts #-}
@@ -110,6 +110,9 @@ instance (GHasSchema a) => NoSelSchema (S1 NoSelector a) where
         where
         retag :: Tag (S1 NoSelector a p) -> Tag (a p)
         retag _ = tag
+
+instance NoSelSchema U1 where
+    nsschema _ _ = [Schema . tuple $ []]
 
 --------------------------------------------------
 data True

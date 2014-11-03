@@ -7,6 +7,7 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (Lift(..), lift)
 import qualified Data.Aeson.TH as DA
 import Data.Aeson.Schema.Types
+import Data.Aeson.Schema.Classes (HasSchema(..))
 import qualified Data.Text as T (Text, pack, unpack)
 import Data.Map.Strict (fromList)
 
