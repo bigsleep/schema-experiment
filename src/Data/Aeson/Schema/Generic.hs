@@ -1,8 +1,7 @@
-{-# LANGUAGE CPP, DefaultSignatures, EmptyDataDecls, FlexibleInstances,
+{-# LANGUAGE FlexibleInstances,
     FunctionalDependencies, KindSignatures, OverlappingInstances,
     ScopedTypeVariables, TypeOperators, UndecidableInstances,
-    ViewPatterns, NamedFieldPuns, FlexibleContexts, PatternGuards,
-    RecordWildCards #-}
+    FlexibleContexts #-}
 module Data.Aeson.Schema.Generic
 ( GHasSchema(..)
 ) where
@@ -23,13 +22,17 @@ instance (GHasSchema a) => GHasSchema (M1 i c a) where
               retag = const tag
 
 instance (ConsSchema a) => GHasSchema (D1 c a) where
-    gschema opts tg = case consSchema opts (retag tg) of
-                           [(_, s)] -> s
-                           xs -> SchemaUnion sume . M.fromList $ xs
+    gschema opts tg = apply $ consSchema opts (retag tg)
         where
+        apply [(_, x)] = x
+        apply xs | useStringTag && all isNullary xs = Schema . enum . map fst $ xs
+        apply xs = SchemaUnion sumE . M.fromList $ xs
+        useStringTag = allNullaryToStringTag opts
         retag :: Tag (D1 c a p) -> Tag (a p)
         retag _ = tag
-        sume = sumEncoding opts
+        sumE = sumEncoding opts
+        isNullary (_, Schema (SchemaValueArray (SchemaArrayTuple []))) = True
+        isNullary _ = False
 
 instance (HasSchema a) => GHasSchema (K1 i a) where
     gschema _ _ = schema (tag :: Tag a)
