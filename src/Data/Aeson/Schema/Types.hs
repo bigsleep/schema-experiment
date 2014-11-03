@@ -8,7 +8,6 @@ module Data.Aeson.Schema.Types
 , SchemaString(..)
 , SchemaArray(..)
 , SchemaObject(..)
-, HasSchema(..)
 , Tag
 , Tag2
 , null
@@ -97,7 +96,3 @@ data SchemaArray =
     deriving (Show, Eq, Ord, Generic)
 
 data SchemaObject = SchemaObject (Map Text Schema) deriving (Show, Eq, Ord, Generic)
-
-class HasSchema a where
-    schema :: Tag a -> Schema
-

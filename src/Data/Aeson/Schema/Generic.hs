@@ -3,19 +3,17 @@
     ScopedTypeVariables, TypeOperators, UndecidableInstances,
     FlexibleContexts #-}
 module Data.Aeson.Schema.Generic
-( GHasSchema(..)
+(
 ) where
 
 import GHC.Generics
 import Data.Aeson.Types (Options(..))
 import Data.Aeson.Schema.Types
+import Data.Aeson.Schema.Classes
 import Data.Text (Text, pack)
 import qualified Data.Map.Strict as M (fromList)
 
 ---------------------------------------
-class GHasSchema f where
-    gschema :: Options -> Tag (f a) -> Schema
-
 instance (GHasSchema a) => GHasSchema (M1 i c a) where
     gschema opts = gschema opts . retag
         where retag :: Tag (M1 i c a b) -> Tag (a b)
