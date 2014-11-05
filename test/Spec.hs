@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, OverloadedStrings, FlexibleContexts, DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts, DeriveGeneric #-}
 module Main where
 
 import Test.Hspec (hspec, Spec, describe, it, shouldBe, shouldSatisfy, shouldContain, expectationFailure)
@@ -12,7 +12,6 @@ import Data.Aeson.Schema.Classes
 import Data.Aeson.Schema.Generic
 
 import qualified Data.Text as T
-import Data.Tagged (Tagged(..))
 import Data.Char (toLower)
 import Data.Map.Strict (Map, empty, fromList)
 import GHC.Generics (Generic)

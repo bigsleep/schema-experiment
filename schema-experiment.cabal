@@ -17,7 +17,7 @@ cabal-version:       >=1.18
 
 library
   exposed-modules: Data.Aeson.Schema.Types, Data.Aeson.Schema.Classes, Data.Aeson.Schema.Instances, Data.Aeson.Schema.Generic
-  build-depends:       base >=4.7 && <4.8, mtl, containers, unordered-containers, text, scientific, aeson, template-haskell
+  build-depends:       base >=4.7 && <4.8, mtl, containers, unordered-containers, text, scientific, aeson
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -25,5 +25,11 @@ test-suite spec
   HS-Source-Dirs:   test, src
   type:             exitcode-stdio-1.0
   main-is:          Spec.hs
-  build-depends:    base >=4.7 && <4.8, hspec, QuickCheck, mtl, containers, unordered-containers, text, scientific, aeson, tagged, template-haskell
+  build-depends:    base >=4.7 && <4.8, hspec, QuickCheck, mtl, containers, unordered-containers, text, scientific, aeson
+
+executable example
+  HS-Source-Dirs:   ., src
+  type:             exitcode-stdio-1.0
+  main-is:          example.hs
+  build-depends:       base >=4.7 && <4.8, mtl, containers, unordered-containers, text, scientific, aeson, bytestring
 

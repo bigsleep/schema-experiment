@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, FlexibleInstances, TemplateHaskell, OverlappingInstances, ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings, FlexibleInstances, OverlappingInstances, ScopedTypeVariables #-}
 module Data.Aeson.Schema.Instances
 (
 ) where
@@ -23,7 +23,6 @@ import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
 import qualified Data.Map.Strict as M (Map, empty, insert, union)
 import Data.Typeable (Typeable)
-import Language.Haskell.TH (tupleTypeName)
 
 instance (HasSchema a) => HasSchema (Maybe a) where
     schema m t = (SchemaMaybe s, d)

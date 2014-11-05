@@ -23,13 +23,14 @@ module Data.Aeson.Schema.Types
 , tag2
 , isObject
 , isUnion
-, aliasIfObjectOrUnion
 ) where
 
 import Prelude hiding (null)
 import GHC.Generics (Generic)
 import Data.Text (Text)
 import Data.Map.Strict (Map, fromList, insert)
+import qualified Data.Aeson as DA (ToJSON(..), FromJSON(..), genericToJSON, genericParseJSON)
+import qualified Data.Aeson.Types as DA (Options(..), defaultOptions, SumEncoding(..))
 import Data.Aeson.Types (SumEncoding(..))
 
 newtype Tag a = Tag ()
@@ -108,7 +109,59 @@ isUnion :: Schema -> Bool
 isUnion (SchemaUnion _ _) = True
 isUnion _ = False
 
-aliasIfObjectOrUnion :: Text -> (Schema, Map Text Schema) -> (Schema, Map Text Schema)
-aliasIfObjectOrUnion typeName (s, d)
-    | isObject s || isUnion s = (SchemaAlias $ typeName, insert typeName s d)
-    | otherwise = (s, d)
+options :: DA.Options
+options = DA.defaultOptions { DA.sumEncoding = DA.ObjectWithSingleField }
+
+instance DA.ToJSON Schema where
+    toJSON = DA.genericToJSON options
+
+instance DA.ToJSON SchemaValue where
+    toJSON = DA.genericToJSON options
+
+instance DA.ToJSON SchemaNull where
+    toJSON = DA.genericToJSON options
+
+instance DA.ToJSON SchemaBool where
+    toJSON = DA.genericToJSON options
+
+instance DA.ToJSON SchemaNumber where
+    toJSON = DA.genericToJSON options
+
+instance DA.ToJSON SchemaString where
+    toJSON = DA.genericToJSON options
+
+instance DA.ToJSON SchemaArray where
+    toJSON = DA.genericToJSON options
+
+instance DA.ToJSON SchemaObject where
+    toJSON = DA.genericToJSON options
+
+instance DA.FromJSON Schema where
+    parseJSON = DA.genericParseJSON options
+
+instance DA.FromJSON SchemaValue where
+    parseJSON = DA.genericParseJSON options
+
+instance DA.FromJSON SchemaNull where
+    parseJSON = DA.genericParseJSON options
+
+instance DA.FromJSON SchemaBool where
+    parseJSON = DA.genericParseJSON options
+
+instance DA.FromJSON SchemaNumber where
+    parseJSON = DA.genericParseJSON options
+
+instance DA.FromJSON SchemaString where
+    parseJSON = DA.genericParseJSON options
+
+instance DA.FromJSON SchemaArray where
+    parseJSON = DA.genericParseJSON options
+
+instance DA.FromJSON SchemaObject where
+    parseJSON = DA.genericParseJSON options
+
+instance DA.ToJSON DA.SumEncoding
+
+instance DA.FromJSON DA.SumEncoding
+
+deriving instance Generic DA.SumEncoding
