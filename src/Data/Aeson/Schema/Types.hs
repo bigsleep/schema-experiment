@@ -21,12 +21,15 @@ module Data.Aeson.Schema.Types
 , stringConstant
 , tag
 , tag2
+, isObject
+, isUnion
+, aliasIfObjectOrUnion
 ) where
 
 import Prelude hiding (null)
 import GHC.Generics (Generic)
 import Data.Text (Text)
-import Data.Map.Strict (Map, fromList)
+import Data.Map.Strict (Map, fromList, insert)
 import Data.Aeson.Types (SumEncoding(..))
 
 newtype Tag a = Tag ()
@@ -37,11 +40,11 @@ newtype Tag2 (a :: * -> *) = Tag2 ()
 tag2 :: Tag2 a
 tag2 = Tag2 ()
 
-
 data Schema =
     Schema !SchemaValue |
     SchemaMaybe !Schema |
-    SchemaUnion SumEncoding (Map Text Schema)
+    SchemaUnion SumEncoding (Map Text Schema) |
+    SchemaAlias Text
     deriving (Show, Eq, Ord, Generic)
 
 deriving instance Show SumEncoding
@@ -96,3 +99,16 @@ data SchemaArray =
     deriving (Show, Eq, Ord, Generic)
 
 data SchemaObject = SchemaObject (Map Text Schema) deriving (Show, Eq, Ord, Generic)
+
+isObject :: Schema -> Bool
+isObject (Schema (SchemaValueObject _)) = True
+isObject _ = False
+
+isUnion :: Schema -> Bool
+isUnion (SchemaUnion _ _) = True
+isUnion _ = False
+
+aliasIfObjectOrUnion :: Text -> (Schema, Map Text Schema) -> (Schema, Map Text Schema)
+aliasIfObjectOrUnion typeName (s, d)
+    | isObject s || isUnion s = (SchemaAlias $ typeName, insert typeName s d)
+    | otherwise = (s, d)
