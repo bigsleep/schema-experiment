@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, FlexibleInstances, OverlappingInstances, ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings, OverlappingInstances, FlexibleInstances #-}
 module Data.Aeson.Schema.Instances
 (
 ) where
@@ -6,23 +6,18 @@ module Data.Aeson.Schema.Instances
 import Data.Aeson.Schema.Types
 import Data.Aeson.Schema.Classes (HasSchema(..))
 import Data.Aeson.Schema.Generic ()
-import Data.Aeson.Types (Options(..), SumEncoding(..), defaultOptions)
 
-import Control.Monad (mapM, liftM2)
 import Data.Scientific (Scientific)
 import Data.Fixed (HasResolution, Fixed)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
-import qualified Data.Text as T (Text, pack)
+import qualified Data.Text as T (Text)
 import Data.Ratio (Ratio)
 import qualified Data.Text.Lazy as LT (Text)
 import qualified Data.Set as Set
-import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
 import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
-import qualified Data.Map.Strict as M (Map, empty, insert, union)
-import Data.Typeable (Typeable)
 
 instance (HasSchema a) => HasSchema (Maybe a) where
     schemaJSON m t = (SchemaMaybe s, d)

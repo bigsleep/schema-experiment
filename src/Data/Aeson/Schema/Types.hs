@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, StandaloneDeriving, KindSignatures #-}
+{-# LANGUAGE DeriveGeneric, StandaloneDeriving #-}
 module Data.Aeson.Schema.Types
 ( Schema(..)
 , SchemaValue(..)
@@ -9,7 +9,6 @@ module Data.Aeson.Schema.Types
 , SchemaArray(..)
 , SchemaObject(..)
 , Tag
-, Tag2
 , null
 , bool
 , number
@@ -20,15 +19,14 @@ module Data.Aeson.Schema.Types
 , enum
 , stringConstant
 , tag
-, tag2
 , isObject
 , isUnion
 ) where
 
 import Prelude hiding (null)
 import GHC.Generics (Generic)
-import Data.Text (Text)
-import Data.Map.Strict (Map, fromList, insert)
+import qualified Data.Text as T (Text)
+import qualified Data.Map.Strict as M (Map, fromList)
 import qualified Data.Aeson as DA (ToJSON(..), FromJSON(..), genericToJSON, genericParseJSON)
 import qualified Data.Aeson.Types as DA (Options(..), defaultOptions, SumEncoding(..))
 import Data.Aeson.Types (SumEncoding(..))
@@ -37,15 +35,11 @@ newtype Tag a = Tag ()
 tag :: Tag a
 tag = Tag ()
 
-newtype Tag2 (a :: * -> *) = Tag2 ()
-tag2 :: Tag2 a
-tag2 = Tag2 ()
-
 data Schema =
     Schema !SchemaValue |
     SchemaMaybe !Schema |
-    SchemaUnion SumEncoding (Map Text Schema) |
-    SchemaAlias Text
+    SchemaUnion SumEncoding (M.Map T.Text Schema) |
+    SchemaAlias T.Text
     deriving (Show, Eq, Ord, Generic)
 
 deriving instance Show SumEncoding
@@ -73,13 +67,13 @@ array = SchemaValueArray . SchemaArray
 tuple :: [Schema] -> SchemaValue
 tuple = SchemaValueArray . SchemaArrayTuple
 
-object :: [(Text, Schema)] -> SchemaValue
-object = SchemaValueObject . SchemaObject . fromList
+object :: [(T.Text, Schema)] -> SchemaValue
+object = SchemaValueObject . SchemaObject . M.fromList
 
-enum :: [Text] -> SchemaValue
+enum :: [T.Text] -> SchemaValue
 enum = SchemaValueString . SchemaStringEnum
 
-stringConstant :: Text -> SchemaValue
+stringConstant :: T.Text -> SchemaValue
 stringConstant = SchemaValueString . SchemaStringConstant
 
 data SchemaNull = SchemaNull deriving (Show, Eq, Ord, Generic)
@@ -90,8 +84,8 @@ data SchemaNumber = SchemaNumber deriving (Show, Eq, Ord, Generic)
 
 data SchemaString =
     SchemaString |
-    SchemaStringConstant Text |
-    SchemaStringEnum [Text]
+    SchemaStringConstant T.Text |
+    SchemaStringEnum [T.Text]
     deriving (Show, Eq, Ord, Generic)
 
 data SchemaArray =
@@ -99,7 +93,7 @@ data SchemaArray =
     SchemaArrayTuple [Schema]
     deriving (Show, Eq, Ord, Generic)
 
-data SchemaObject = SchemaObject (Map Text Schema) deriving (Show, Eq, Ord, Generic)
+data SchemaObject = SchemaObject (M.Map T.Text Schema) deriving (Show, Eq, Ord, Generic)
 
 isObject :: Schema -> Bool
 isObject (Schema (SchemaValueObject _)) = True

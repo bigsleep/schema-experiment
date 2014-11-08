@@ -1,7 +1,6 @@
-{-# LANGUAGE FlexibleInstances, EmptyDataDecls,
+{-# LANGUAGE EmptyDataDecls, FlexibleContexts, FlexibleInstances,
     FunctionalDependencies, KindSignatures, OverlappingInstances,
-    ScopedTypeVariables, TypeOperators, UndecidableInstances,
-    FlexibleContexts #-}
+    ScopedTypeVariables, TypeOperators, UndecidableInstances #-}
 module Data.Aeson.Schema.Generic
 (
 ) where
@@ -15,7 +14,7 @@ import qualified Data.Map.Strict as M (Map, fromList, insert, lookup, delete)
 import Control.Monad (liftM2)
 import Control.Monad.State.Strict (State, modify, get, put)
 
----------------------------------------
+--------------------------------------------------------------------------------
 instance (GHasSchema a) => GHasSchema (G.M1 i c a) where
     gschema opts = gschema opts . retag
         where retag :: Tag (G.M1 i c a b) -> Tag (a b)
@@ -56,7 +55,7 @@ instance (HasSchema a) => GHasSchema (G.K1 i a) where
 instance GHasSchema G.U1 where
     gschema _ _ = return . Schema . tuple $ []
 
----------------------------------------
+--------------------------------------------------------------------------------
 class ConsSchema f where
     consSchema :: Options -> Tag (f a) -> State (M.Map T.Text Schema) [(T.Text, Schema)]
 
@@ -91,7 +90,7 @@ instance (NoSelSchema f) => ConsSchema' f False where
         apply [x] = x
         apply xs =  Schema . tuple $ xs
 
-------------------------------------------
+--------------------------------------------------------------------------------
 class RecordSchema f where
     rschema :: Options -> Tag (f a) -> State (M.Map T.Text Schema) [(T.Text, Schema)]
 
@@ -116,7 +115,7 @@ fieldSchema opts tg = do
     fieldMod = fieldLabelModifier opts
     label = T.pack . fieldMod . getSelName $ tg
 
-------------------------------------------
+--------------------------------------------------------------------------------
 class NoSelSchema f where
     nsschema :: Options -> Tag (f a) -> State (M.Map T.Text Schema) [Schema]
 
@@ -137,7 +136,7 @@ instance (GHasSchema a) => NoSelSchema (G.S1 G.NoSelector a) where
 instance NoSelSchema G.U1 where
     nsschema _ _ = return [Schema . tuple $ []]
 
---------------------------------------------------
+--------------------------------------------------------------------------------
 data True
 data False
 
@@ -149,7 +148,7 @@ instance (IsRecord f isRecord) => IsRecord (G.M1 G.S c f) isRecord
 instance IsRecord (G.K1 i c) True
 instance IsRecord G.U1 False
 
-----------------------------------------------------
+--------------------------------------------------------------------------------
 newtype M1T c (f :: * -> *) p = M1T ()
 
 getSelName :: (G.Selector s) => Tag (G.S1 s a p) -> String
