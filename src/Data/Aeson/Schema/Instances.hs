@@ -14,10 +14,10 @@ import Data.Word (Word, Word8, Word16, Word32, Word64)
 import qualified Data.Text as T (Text)
 import Data.Ratio (Ratio)
 import qualified Data.Text.Lazy as LT (Text)
-import qualified Data.Set as Set
-import qualified Data.HashSet as HashSet
-import qualified Data.IntMap as IntMap
-import qualified Data.IntSet as IntSet
+import qualified Data.Set as Set (Set)
+import qualified Data.HashSet as HashSet (HashSet)
+import qualified Data.IntMap as IntMap (IntMap)
+import qualified Data.IntSet as IntSet (IntSet)
 
 instance (HasSchema a) => HasSchema (Maybe a) where
     schemaJSON m t = (SchemaMaybe s, d)
