@@ -49,7 +49,7 @@ instance (ConsSchema a, G.Datatype c) => GHasSchema (G.D1 c a) where
 instance (HasSchema a) => GHasSchema (G.K1 i a) where
     gschema _ _ = do
         m <- get
-        let (s, m') = schema m (tag :: Tag a)
+        let (s, m') = schemaJSON m (tag :: Tag a)
         put m'
         return s
 
@@ -64,7 +64,7 @@ class ConsSchema' f isRecord where
     consSchema' :: Tag isRecord -> Options -> Tag (f a) -> State (M.Map T.Text Schema) Schema
 
 instance (ConsSchema a, ConsSchema b) => ConsSchema (a G.:+: b) where
-    consSchema opts tg = consSchema opts (l tg) `cat` consSchema opts (r tg)
+    consSchema opts tg = consSchema opts (l tg) `concatM` consSchema opts (r tg)
         where
         l :: Tag ((a G.:+: b) c) -> Tag (a c)
         l _ = tag
@@ -96,7 +96,7 @@ class RecordSchema f where
     rschema :: Options -> Tag (f a) -> State (M.Map T.Text Schema) [(T.Text, Schema)]
 
 instance (RecordSchema a, RecordSchema b) => RecordSchema (a G.:*: b) where
-    rschema opts tg = rschema opts (l tg) `cat` rschema opts (r tg)
+    rschema opts tg = rschema opts (l tg) `concatM` rschema opts (r tg)
         where
         l :: Tag ((a G.:*: b) c) -> Tag (a c)
         l _ = tag
@@ -121,7 +121,7 @@ class NoSelSchema f where
     nsschema :: Options -> Tag (f a) -> State (M.Map T.Text Schema) [Schema]
 
 instance (NoSelSchema a, NoSelSchema b) => NoSelSchema (a G.:*: b) where
-    nsschema opts tg = nsschema opts (l tg) `cat` nsschema opts (r tg)
+    nsschema opts tg = nsschema opts (l tg) `concatM` nsschema opts (r tg)
         where
         l :: Tag ((a G.:*: b) c) -> Tag (a c)
         l _ = tag
@@ -171,5 +171,5 @@ getDatatypeName t = G.moduleName t' ++ '.' : G.datatypeName t'
     retag _ = M1T ()
     t' = retag t
 
-cat :: (Monad m) => m [a] -> m [a] -> m [a]
-cat = liftM2 (++)
+concatM :: (Monad m) => m [a] -> m [a] -> m [a]
+concatM = liftM2 (++)

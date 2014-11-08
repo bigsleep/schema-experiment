@@ -6,10 +6,7 @@ import qualified Test.Hspec.QuickCheck as Q
 import qualified Test.QuickCheck.Property as Q
 
 import Data.Aeson.Types (Options(..), defaultOptions, SumEncoding(..))
-import Data.Aeson.Schema.Types
-import Data.Aeson.Schema.Instances
-import Data.Aeson.Schema.Classes
-import Data.Aeson.Schema.Generic
+import Data.Aeson.Schema
 
 import qualified Data.Text as T
 import Data.Char (toLower)
@@ -30,7 +27,7 @@ data Data2 =
     Data2Con3 deriving (Show, Generic)
 option2 = defaultOptions {constructorTagModifier = map toLower . drop 5}
 instance HasSchema Data2 where
-    schema = genericSchema option2
+    schemaJSON = genericSchema option2
 
 -- no string tag
 data Data3 =
@@ -38,7 +35,7 @@ data Data3 =
     Data3Con2 deriving (Show, Generic)
 option3 = defaultOptions {allNullaryToStringTag = False, constructorTagModifier = map toLower . drop 5}
 instance HasSchema Data3 where
-    schema = genericSchema option3
+    schemaJSON = genericSchema option3
 
 -- single con, single type
 data Data4 = Data4 [Int] deriving (Show, Generic)
@@ -64,7 +61,7 @@ data Data8 = Data8Con1
     } deriving (Show, Generic)
 option8 = defaultOptions { fieldLabelModifier = map toLower . drop 6 }
 instance HasSchema Data8 where
-    schema = genericSchema option8
+    schemaJSON = genericSchema option8
 
 -- two cons, field labels
 data Data9 = Data9Con1
@@ -76,7 +73,7 @@ data Data9 = Data9Con1
     } deriving (Show, Generic)
 option9 = defaultOptions { sumEncoding = ObjectWithSingleField, constructorTagModifier = drop 5, fieldLabelModifier = map toLower . drop 6 }
 instance HasSchema Data9 where
-    schema = genericSchema option9
+    schemaJSON = genericSchema option9
 
 -- type parameters
 data Data10 a b c = Data10
@@ -86,7 +83,7 @@ data Data10 a b c = Data10
     } deriving (Show, Generic)
 option10 = defaultOptions { fieldLabelModifier = map toLower . drop 7 }
 instance (HasSchema a, HasSchema b, HasSchema c) => HasSchema (Data10 a b c) where
-    schema = genericSchema option10
+    schemaJSON = genericSchema option10
 
 -- type parameter
 data Data11 m a = Data11
@@ -96,23 +93,23 @@ data Data11 m a = Data11
     } deriving (Show, Generic)
 option11 = defaultOptions { fieldLabelModifier = map toLower . drop 7 }
 instance (HasSchema a, HasSchema (m a)) => HasSchema (Data11 m a) where
-    schema = genericSchema option11
+    schemaJSON = genericSchema option11
 
 -- tree
 data Tree a = Node a (Tree a) (Tree a) | Leaf deriving (Show, Generic)
 instance (HasSchema a) => HasSchema (Tree a) where
-    schema = genericSchema defaultOptions { sumEncoding = ObjectWithSingleField }
+    schemaJSON = genericSchema defaultOptions { sumEncoding = ObjectWithSingleField }
 
 main :: IO ()
 main = hspec $ do
     describe "Generic" $ do
         it "Data1, string tag" $ do
             let expected = (Schema (SchemaValueString (SchemaStringEnum ["Data1Con1", "Data1Con2", "Data1Con3"])), empty)
-            schema empty (tag :: Tag Data1) `shouldBe` expected
+            schema (tag :: Tag Data1) `shouldBe` expected
 
         it "Data2, string tag, modify cons" $ do
             let expected = (Schema (SchemaValueString (SchemaStringEnum ["con1", "con2", "con3"])), empty)
-            schema empty (tag :: Tag Data2) `shouldBe` expected
+            schema (tag :: Tag Data2) `shouldBe` expected
 
         it "Data3, no string tag" $ do
             let expected =
@@ -127,11 +124,11 @@ main = hspec $ do
                       )
                     ]
                   )
-            schema empty (tag :: Tag Data3) `shouldBe` expected
+            schema (tag :: Tag Data3) `shouldBe` expected
 
         it "Data4, single con, single type" $ do
             let expected = (Schema . array . Schema $ number, empty)
-            schema empty (tag :: Tag Data4) `shouldBe` expected
+            schema (tag :: Tag Data4) `shouldBe` expected
 
         it "Data5, twos con, single types" $ do
             let expected =
@@ -144,11 +141,11 @@ main = hspec $ do
                       )
                     ]
                   )
-            schema empty (tag :: Tag Data5) `shouldBe` expected
+            schema (tag :: Tag Data5) `shouldBe` expected
 
         it "Data6, single con, two types" $ do
             let expected = (Schema . tuple $ [Schema $ bool, Schema . tuple $ []], empty)
-            schema empty (tag :: Tag Data6) `shouldBe` expected
+            schema (tag :: Tag Data6) `shouldBe` expected
 
         it "Data7, two cons, two types" $ do
             let expected =
@@ -162,7 +159,7 @@ main = hspec $ do
                       )
                     ]
                   )
-            schema empty (tag :: Tag Data7) `shouldBe` expected
+            schema (tag :: Tag Data7) `shouldBe` expected
 
         it "Data8, field labels" $ do
             let expected =
@@ -177,7 +174,7 @@ main = hspec $ do
                       )
                     ]
                   )
-            schema empty (tag :: Tag Data8) `shouldBe` expected
+            schema (tag :: Tag Data8) `shouldBe` expected
 
         it "Data9, two cons, two field labels" $ do
             let expected =
@@ -204,7 +201,7 @@ main = hspec $ do
                       )
                     ]
                   )
-            schema empty (tag :: Tag Data9) `shouldBe` expected
+            schema (tag :: Tag Data9) `shouldBe` expected
 
         it "Data10, type parameters" $ do
             let expected =
@@ -225,7 +222,7 @@ main = hspec $ do
                       )
                     ]
                   )
-            schema empty (tag :: Tag (Data10 Int Bool Data4)) `shouldBe` expected
+            schema (tag :: Tag (Data10 Int Bool Data4)) `shouldBe` expected
 
         it "Data11, type parameters" $ do
             let expected =
@@ -240,7 +237,7 @@ main = hspec $ do
                       )
                     ]
                   )
-            schema empty (tag :: Tag (Data11 [] Bool)) `shouldBe` expected
+            schema (tag :: Tag (Data11 [] Bool)) `shouldBe` expected
 
         it "Tree" $ do
             let expected =
@@ -252,4 +249,4 @@ main = hspec $ do
                       ]
                     ) ]
                   )
-            schema empty (tag :: Tag (Tree Int)) `shouldBe` expected
+            schema (tag :: Tag (Tree Int)) `shouldBe` expected

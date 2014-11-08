@@ -13,9 +13,9 @@ import Data.Map.Strict (Map)
 import Control.Monad.State.Strict (State, runState)
 
 class HasSchema a where
-    schema :: Map Text Schema -> Tag a -> (Schema, Map Text Schema)
-    default schema :: (Generic a, GHasSchema (Rep a)) => Map Text Schema -> Tag a -> (Schema, Map Text Schema)
-    schema = genericSchema defaultOptions
+    schemaJSON :: Map Text Schema -> Tag a -> (Schema, Map Text Schema)
+    default schemaJSON :: (Generic a, GHasSchema (Rep a)) => Map Text Schema -> Tag a -> (Schema, Map Text Schema)
+    schemaJSON = genericSchema defaultOptions
 
 class GHasSchema f where
     gschema :: Options -> Tag (f a) -> State (Map Text Schema) Schema
